@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lotto AI - NY Lottery Optimizer</title>
+    <meta name="theme-color" content="#1e40af">
+    <meta name="description" content="AI-powered lottery number optimizer using K-means clustering and frequency analysis">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f1f5f9;
+            --text-light: #94a3b8;
+            --primary: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border: #334155;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 20px 0; border-bottom: 1px solid var(--border); }
+        .logo { font-size: 3rem; margin-bottom: 10px; }
+        .app-name { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            padding: 15px;
+            background: var(--card);
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; }
+        .stat-label { font-size: 0.75rem; color: var(--text-light); }
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+        }
+        .paste-input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            margin-top: 10px;
+            font-family: monospace;
+        }
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: var(--card); border: 1px solid var(--border); }
+        .btn-danger { background: var(--error); }
+        .btn-success { background: var(--success); }
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .strategy-btn {
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .strategy-btn.active { background: var(--primary); border-color: var(--primary); }
+        .num-picks { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .num-picks input {
+            width: 60px;
+            padding: 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            text-align: center;
+        }
+        .results-area { min-height: 200px; }
+        .result-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .result-card:hover { border-color: var(--primary); }
+        .result-card.selected { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
+        .lotto-ball-group { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+        .lotto-ball {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .result-meta {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 10px;
+        }
+        .result-actions { display: flex; gap: 10px; justify-content: center; }
+        .result-actions button {
+            padding: 6px 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .canvas-container {
+            position: relative;
+            height: 300px;
+            background: var(--bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        canvas { width: 100%; height: 100%; }
+        .frequency-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .frequency-bar .number { width: 30px; text-align: center; font-weight: bold; }
+        .frequency-bar .bar-container { flex: 1; height: 20px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+        .frequency-bar .bar { height: 100%; background: var(--primary); border-radius: 4px; }
+        .frequency-bar .count { width: 40px; text-align: right; font-size: 0.85rem; color: var(--text-light); }
+        .status { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .status.success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .status.warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .status.error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 0.75rem;
+            padding: 8px 16px;
+        }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 1.5rem; }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+        .toast {
+            background: var(--card);
+            color: var(--text);
+            padding: 12px 24px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--error); }
+        .toast.warning { border-left: 4px solid var(--warning); }
+        @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-100%); } }
+        .install-prompt {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            right: 20px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            display: none;
+            z-index: 999;
+        }
+        .install-prompt.show { display: block; animation: slideIn 0.3s ease; }
+        .offline-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--warning);
+            color: #000;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.85rem;
+            display: none;
+        }
+        .offline-indicator.show { display: block; }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-light); }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 15px; }
+        .ptr-indicator {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 0 0 8px 8px;
+            display: none;
+            z-index: 1000;
+        }
+        .ptr-indicator.show { display: block; }
+        .action-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+        .action-bar button { flex: 1; min-width: 100px; padding: 10px; font-size: 0.85rem; }
+        .ban-history-section { margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px; }
+        .ban-count { font-size: 0.85rem; color: var(--text-light); margin-bottom: 10px; }
+        .ban-count span { color: var(--warning); font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="offline-indicator" id="offlineIndicator">📴 Offline Mode</div>
+    <div class="ptr-indicator" id="ptrIndicator">🔄 Refreshing...</div>
+    <div class="toast-container" id="toast-container"></div>
+    
+    <div class="install-prompt" id="installPrompt">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+            <div>
+                <h3 style="margin-bottom: 5px;">📱 Install Lotto AI</h3>
+                <p style="font-size: 0.85rem; color: var(--text-light);">Add to home screen for offline access</p>
+            </div>
+            <button onclick="document.getElementById('installPrompt').classList.remove('show')" style="background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 1.5rem;">×</button>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button id="installBtn" class="btn">Install</button>
+            <button id="dismissInstall" class="btn btn-secondary">Not Now</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <header class="header">
+            <div class="logo">🎱</div>
+            <div class="app-name">Lotto AI</div>
+            <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 5px;">NY Lottery Optimizer</p>
+        </header>
+
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-value" id="statLoaded">0</div>
+                <div class="stat-label">Draws</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="statHotNumber">-</div>
+                <div class="stat-label">Hot #</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="statAvgSum">-</div>
+                <div class="stat-label">Avg Sum</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="statUpdated">No</div>
+                <div class="stat-label">Ready</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">📁 Import Data</div>
+            <div class="drop-zone" id="dropZone">
+                <div style="font-size: 2rem; margin-bottom: 10px;">📊</div>
+                <div>Tap to upload CSV file</div>
+                <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 5px;">or paste numbers below</div>
+            </div>
+            <input type="file" id="fileInput" accept=".csv,.json" style="display: none;">
+            <textarea class="paste-input" id="pasteInput" rows="3" placeholder="Paste numbers here (e.g., 5,12,23,34,45,56)"></textarea>
+            <button class="btn" id="updateBtn">➕ Add Numbers</button>
+            <div id="fileStatus" style="margin-top: 10px; font-size: 0.85rem;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">🎯 Strategy</div>
+            <div class="strategy-grid">
+                <button class="strategy-btn active" data-strategy="balanced">⚖️ Balanced</button>
+                <button class="strategy-btn" data-strategy="hot">🔥 Hot</button>
+                <button class="strategy-btn" data-strategy="cold">❄️ Cold</button>
+                <button class="strategy-btn" data-strategy="random">🎲 Random</button>
+            </div>
+            <select id="strategySelect" style="display: none;">
+                <option value="balanced">Balanced</option>
+                <option value="hot">Hot</option>
+                <option value="cold">Cold</option>
+                <option value="random">Random</option>
+            </select>
+            <div class="num-picks">
+                <label>Number of Picks:</label>
+                <input type="number" id="numPicks" value="5" min="1" max="20">
+            </div>
+            <button class="btn" id="generateBtn">🚀 Generate Numbers</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">🎱 Your Numbers</div>
+            <div class="results-area" id="resultsArea">
+                <div class="empty-state">
+                    <div class="icon">🎱</div>
+                    <h3>Ready to Generate</h3>
+                    <p>Load historical data or paste recent numbers to begin AI analysis</p>
+                </div>
+            </div>
+            <div class="action-bar">
+                <button class="btn btn-secondary" id="clearBtn">Clear</button>
+                <button class="btn btn-secondary" id="savePicksBtn">💾 Save CSV</button>
+                <button class="btn btn-secondary" id="shareBtn">📤 Share</button>
+                <button class="btn btn-secondary" id="printBtn">🖨️ Print</button>
+            </div>
+            <button class="btn btn-secondary" id="selectAllBtn" style="display: none; margin-top: 10px;">Select All</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">📊 Cluster Analysis</div>
+            <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 10px;">X: Sum of numbers | Y: Average value</p>
+            <div class="canvas-container">
+                <canvas id="kMeansCanvas"></canvas>
+            </div>
+            <div id="analysisStatus" class="status" style="margin-top: 10px; display: inline-block;">Ready</div>
+        </div>
+
+        <div class="card" id="topNumbersCard" style="display: none;">
+            <div class="card-title">🔥 Top 5 Hot Numbers</div>
+            <div id="topNumbersList"></div>
+        </div>
+
+        <div class="card" id="frequencySection" style="display: none;">
+            <div class="card-title">📈 Frequency</div>
+            <div id="frequencyChart"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">⚙️ Data Management</div>
+            <button class="btn btn-secondary" id="downloadBtn" style="display: none;">⬇️ Download All Data (CSV)</button>
+            <button class="btn btn-danger" id="clearDataBtn" style="margin-top: 10px;">🗑️ Clear All Data</button>
+            
+            <div class="ban-history-section">
+                <p class="ban-count">
+                    Permanently Banned Draws: <span id="banned-count">0</span>
+                </p>
+                <button onclick="clearBannedHistory()" class="btn btn-danger" style="margin-bottom: 10px;">
+                    🗑️ Reset Ban History (Allow Repeats)
+                </button>
+                <button onclick="downloadBannedHistory()" class="btn btn-secondary">
+                    📥 Download Ban List
+                </button>
+            </div>
+        </div>
+
+        <div class="card" style="text-align: center; font-size: 0.85rem; color: var(--text-light);">
+            <p><strong>About</strong></p>
+            <p style="margin-top: 10px;">
+                Lotto AI uses K-means clustering and frequency analysis to generate optimized number combinations. 
+                Not affiliated with NY Lottery. Play responsibly.
+            </p>
+            <p style="margin-top: 15px;">Version 1.0 • Web App</p>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active">
+            <span class="nav-icon">🎱</span>
+            <span>Generate</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">📊</span>
+            <span>Analysis</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+        </a>
+    </nav>
+
+    <script>
+    // --- PERSISTENT BAN HISTORY FUNCTIONS ---
+    function loadBannedHistory() {
+        const stored = localStorage.getItem('lotto_banned_history');
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    }
+
+    function saveBannedHistoryToStorage() {
+        localStorage.setItem('lotto_banned_history', JSON.stringify(Array.from(state.bannedHistory)));
+        updateBannedCountUI();
+    }
+
+    function updateBannedCountUI() {
+        const countEl = document.getElementById('banned-count');
+        if (countEl) countEl.textContent = state.bannedHistory.size;
+    }
+
+    function clearBannedHistory() {
+        if(confirm("WARNING: This will allow previously generated numbers to appear again. Are you sure?")) {
+            state.bannedHistory.clear();
+            saveBannedHistoryToStorage();
+            showToast("Ban history cleared", "success");
+        }
+    }
+
+    function downloadBannedHistory() {
+        const history = Array.from(state.bannedHistory);
+        if (history.length === 0) {
+            showToast("No banned numbers to download", "warning");
+            return;
+        }
+        const csvContent = "data:text/csv;charset=utf-8,Banned Combinations\n" + history.join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "banned_numbers_" + new Date().toISOString().split('T')[0] + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Ban list downloaded!", "success");
+    }
+
+    // --- State Management ---
+    const state = {
+        pastWinners: [],
+        pastWinnersSet: new Set(),
+        generated: new Set(),
+        selected: new Set(),
+        bannedHistory: loadBannedHistory(),
+        clusters: [],
+        frequencyMap: Array(60).fill(0),
+        maxNumber: 59,
+        numbersPerDraw: 6,
+        avgFrequency: 0,
+        hasNewData: false,
+        strategy: 'balanced',
+        deferredPrompt: null
+    };
+
+    // --- DOM Elements ---
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileStatus = document.getElementById('fileStatus');
+    const pasteInput = document.getElementById('pasteInput');
+    const updateBtn = document.getElementById('updateBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const clearDataBtn = document.getElementById('clearDataBtn');
+    const resultsArea = document.getElementById('resultsArea');
+    const numPicksInput = document.getElementById('numPicks');
+    const strategySelect = document.getElementById('strategySelect');
+    const statLoaded = document.getElementById('statLoaded');
+    const statUpdated = document.getElementById('statUpdated');
+    const statHotNumber = document.getElementById('statHotNumber');
+    const statAvgSum = document.getElementById('statAvgSum');
+    const canvas = document.getElementById('kMeansCanvas');
+    const ctx = canvas.getContext('2d');
+    const analysisStatus = document.getElementById('analysisStatus');
+    const topNumbersCard = document.getElementById('topNumbersCard');
+    const topNumbersList = document.getElementById('topNumbersList');
+    const frequencySection = document.getElementById('frequencySection');
+    const frequencyChart = document.getElementById('frequencyChart');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const installPrompt = document.getElementById('installPrompt');
+    const installBtn = document.getElementById('installBtn');
+    const dismissInstall = document.getElementById('dismissInstall');
+    const offlineIndicator = document.getElementById('offlineIndicator');
+    const printBtn = document.getElementById('printBtn');
+    const savePicksBtn = document.getElementById('savePicksBtn');
+    const shareBtn = document.getElementById('shareBtn');
+
+    // --- Online/Offline Detection ---
+    window.addEventListener('online', () => {
+        offlineIndicator.classList.remove('show');
+        showToast('Back online', 'success');
+    });
+
+    window.addEventListener('offline', () => {
+        offlineIndicator.classList.add('show');
+        showToast('You are offline', 'warning');
+    });
+
+    if (!navigator.onLine) offlineIndicator.classList.add('show');
+
+    // --- File Handling ---
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length) handleFile(files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    // --- Update / Paste Handling ---
+    updateBtn.addEventListener('click', () => {
+        const text = pasteInput.value.trim();
+        if (!text) {
+            showToast("Please paste numbers first", "error");
+            return;
+        }
+        const added = processRawText(text);
+        if (added > 0) {
+            recalculateStats();
+            runKMeans();
+            updateTopNumbers();
+            showToast("Added " + added + " new draw" + (added > 1 ? 's' : '') + "!", "success");
+            statUpdated.textContent = "Yes";
+            statUpdated.style.color = "var(--success)";
+            state.hasNewData = true;
+            downloadBtn.style.display = 'block';
+            pasteInput.value = '';
+            saveToLocalStorage();
+        } else {
+            showToast("No new unique numbers found", "error");
+        }
+    });
+
+    function processRawText(text) {
+        let addedCount = 0;
+        const matches = text.match(/\d+/g);
+        if (!matches) return 0;
+        const validNumbers = matches.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 59);
+        for (let i = 0; i <= validNumbers.length - 6; i++) {
+            const chunk = validNumbers.slice(i, i + 6);
+            const uniqueChunk = new Set(chunk);
+            if (uniqueChunk.size === 6) {
+                const sorted = [...chunk].sort((a,b)=>a-b);
+                const key = sorted.join(',');
+                if (!state.pastWinnersSet.has(key)) {
+                    state.pastWinners.push(sorted);
+                    state.pastWinnersSet.add(key);
+                    addedCount++;
+                }
+            }
+        }
+        return addedCount;
+    }
+
+    // --- Local Storage Persistence ---
+    function saveToLocalStorage() {
+        const data = { pastWinners: state.pastWinners, timestamp: Date.now() };
+        localStorage.setItem('lottoData', JSON.stringify(data));
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem('lottoData');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                if (data.pastWinners && data.pastWinners.length > 0) {
+                    state.pastWinners = data.pastWinners;
+                    state.pastWinnersSet = new Set(data.pastWinners.map(d => d.join(',')));
+                    recalculateStats();
+                    runKMeans();
+                    updateTopNumbers();
+                    statLoaded.textContent = state.pastWinners.length;
+                    fileStatus.innerHTML = '<span class="status success">Loaded from cache</span>';
+                    showToast("Restored " + data.pastWinners.length + " draws from memory", 'success');
+                    return true;
+                }
+            } catch (e) {
+                console.error('Failed to load from localStorage', e);
+            }
+        }
+        return false;
+    }
+
+    if (!loadFromLocalStorage()) loadDemoData();
+
+    function loadDemoData() {
+        const demoData = [[3,12,23,34,45,56],[7,14,21,28,35,42],[2,11,22,33,44,55],[5,15,25,35,45,55],[8,18,28,38,48,58]];
+        demoData.forEach(draw => {
+            state.pastWinners.push(draw);
+            state.pastWinnersSet.add(draw.join(','));
+        });
+        recalculateStats();
+        statLoaded.textContent = state.pastWinners.length;
+        fileStatus.innerHTML = '<span class="status warning">Demo mode - Add real data</span>';
+    }
+
+    // --- Download Updated CSV ---
+    downloadBtn.addEventListener('click', () => {
+        if (state.pastWinners.length === 0) return;
+        let csvContent = "data:text/csv;charset=utf-8,Winning Numbers\n";
+        state.pastWinners.forEach(draw => {
+            csvContent += draw.join(',') + "\n";
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "ny_lotto_data_" + new Date().toISOString().split('T')[0] + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("CSV downloaded successfully!", "success");
+    });
+
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = e.target.result;
+                state.pastWinners = [];
+                state.pastWinnersSet.clear();
+                state.frequencyMap.fill(0);
+                state.hasNewData = false;
+                downloadBtn.style.display = 'none';
+                statUpdated.textContent = "No";
+                statUpdated.style.color = "inherit";
+                if (file.name.endsWith('.json')) parseJSON(content);
+                else parseCSV(content);
+                if (state.pastWinners.length === 0) throw new Error("No valid draws found");
+                recalculateStats();
+                runKMeans();
+                updateTopNumbers();
+                saveToLocalStorage();
+                showToast("Loaded " + state.pastWinners.length + " draws", "success");
+                fileStatus.innerHTML = '<span class="status success">Loaded ' + file.name + '</span>';
+                statLoaded.textContent = state.pastWinners.length;
+            } catch (err) {
+                console.error(err);
+                showToast(err.message, "error");
+                fileStatus.innerHTML = '<span class="status error">Error loading file</span>';
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function parseCSV(text) {
+        const lines = text.split(/\r\n|\n/);
+        lines.forEach((line, index) => {
+            if (!line.trim()) return;
+            if (index === 0 && /date|draw|number/i.test(line)) return;
+            let foundNumbers = [];
+            const cols = line.split(',');
+            cols.forEach(col => {
+                col = col.trim();
+                if (!col) return;
+                const groupedMatch = col.match(/^\d{1,2}(?:\s+\d{1,2}){5,}$/);
+                if (groupedMatch) {
+                    const nums = col.match(/\d+/g).map(n => parseInt(n)).filter(n => n >= 1 && n <= 59);
+                    if (nums.length >= 6) { foundNumbers = nums.slice(0, 6); return; }
+                }
+                const num = parseInt(col);
+                if (!isNaN(num) && num >= 1 && num <= 59 && col === num.toString()) {
+                    foundNumbers.push(num);
+                }
+            });
+            if (foundNumbers.length >= 6) {
+                let finalDraw = [];
+                if (foundNumbers.length === 6) finalDraw = foundNumbers;
+                else if (foundNumbers.length === 7) finalDraw = foundNumbers.slice(0, 6);
+                else if (foundNumbers.length === 8) finalDraw = foundNumbers.slice(2, 8);
+                else finalDraw = foundNumbers.slice(2, 8);
+                if (finalDraw.length === 6 && new Set(finalDraw).size === 6) {
+                    const sorted = finalDraw.sort((a,b)=>a-b);
+                    state.pastWinners.push(sorted);
+                    state.pastWinnersSet.add(sorted.join(','));
+                }
+            }
+        });
+    }
+
+    function parseJSON(text) {
+        const data = JSON.parse(text);
+        data.forEach(item => {
+            let numbers = Array.isArray(item) ? item : Object.values(item).filter(v => typeof v === 'number');
+            numbers = numbers.slice(0, 6).filter(n => n >= 1 && n <= 59);
+            if (numbers.length === 6) {
+                const sorted = numbers.sort((a,b)=>a-b);
+                state.pastWinners.push(sorted);
+                state.pastWinnersSet.add(sorted.join(','));
+            }
+        });
+    }
+
+    function recalculateStats() {
+        state.frequencyMap.fill(0);
+        let totalHits = 0;
+        let totalSum = 0;
+        state.pastWinners.forEach((draw) => {
+            draw.forEach(num => {
+                state.frequencyMap[num]++;
+                totalHits++;
+            });
+            totalSum += draw.reduce((a, b) => a + b, 0);
+        });
+        state.avgFrequency = totalHits / 59;
+        const avgSum = state.pastWinners.length > 0 ? Math.round(totalSum / state.pastWinners.length) : 0;
+        statAvgSum.textContent = avgSum;
+        let maxFreq = 0;
+        let hotNumber = '-';
+        for (let i = 1; i <= 59; i++) {
+            if (state.frequencyMap[i] > maxFreq) {
+                maxFreq = state.frequencyMap[i];
+                hotNumber = i;
+            }
+        }
+        statHotNumber.textContent = hotNumber;
+    }
+
+    function updateTopNumbers() {
+        if (state.pastWinners.length === 0) return;
+        const numbersWithFreq = [];
+        for (let i = 1; i <= 59; i++) {
+            numbersWithFreq.push({ number: i, freq: state.frequencyMap[i] });
+        }
+        numbersWithFreq.sort((a, b) => b.freq - a.freq);
+        const top5 = numbersWithFreq.slice(0, 5);
+        topNumbersList.innerHTML = top5.map((item, idx) => 
+            '<div class="frequency-bar"><div class="number">' + item.number + '</div><div class="bar-container"><div class="bar" style="width: ' + ((item.freq / top5[0].freq) * 100) + '%"></div></div><div class="count">' + item.freq + 'x</div></div>'
+        ).join('');
+        topNumbersCard.style.display = 'block';
+        const sortedByNumber = numbersWithFreq.sort((a, b) => a.number - b.number);
+        frequencyChart.innerHTML = sortedByNumber.map(item => 
+            '<div class="frequency-bar"><div class="number">' + item.number.toString().padStart(2, '0') + '</div><div class="bar-container"><div class="bar" style="width: ' + Math.max(2, (item.freq / Math.max.apply(null, state.frequencyMap)) * 100) + '%; opacity: ' + (item.freq > 0 ? 1 : 0.3) + '"></div></div><div class="count">' + item.freq + '</div></div>'
+        ).join('');
+        frequencySection.style.display = 'block';
+    }
+
+    function runKMeans() {
+        analysisStatus.textContent = "Analyzing...";
+        analysisStatus.className = "status warning";
+        setTimeout(() => {
+            const points = state.pastWinners.map(draw => {
+                const sum = draw.reduce((a, b) => a + b, 0);
+                return { x: sum, y: sum / 6, original: draw };
+            });
+            let centroids = [];
+            for(let i=0; i<3; i++) centroids.push(points[Math.floor(Math.random() * points.length)]);
+            const k = 3;
+            let assignments = new Array(points.length);
+            let changed = true;
+            let iterations = 0;
+            while(changed && iterations < 100) {
+                changed = false;
+                for(let i=0; i<points.length; i++) {
+                    const p = points[i];
+                    let minDist = Infinity;
+                    let clusterIndex = -1;
+                    for(let c=0; c<k; c++) {
+                        const dist = Math.hypot(p.x - centroids[c].x, p.y - centroids[c].y);
+                        if(dist < minDist) { minDist = dist; clusterIndex = c; }
+                    }
+                    if(assignments[i] !== clusterIndex) { assignments[i] = clusterIndex; changed = true; }
+                }
+                const sums = Array(k).fill(0).map(() => ({x:0, y:0, count:0}));
+                for(let i=0; i<points.length; i++) {
+                    const cIdx = assignments[i];
+                    sums[cIdx].x += points[i].x;
+                    sums[cIdx].y += points[i].y;
+                    sums[cIdx].count++;
+                }
+                for(let c=0; c<k; c++) {
+                    if(sums[c].count > 0) {
+                        centroids[c] = { x: sums[c].x / sums[c].count, y: sums[c].y / sums[c].count };
+                    }
+                }
+                iterations++;
+            }
+            state.clusters = centroids.map((c, i) => {
+                const clusterPoints = points.filter((p, idx) => assignments[idx] === i);
+                const maxDist = clusterPoints.reduce((max, p) => Math.max(max, Math.hypot(p.x - c.x, p.y - c.y)), 0);
+                return { centroid: c, radius: maxDist, color: ['#ef4444', '#2563eb', '#10b981'][i] };
+            });
+            drawClusters();
+            analysisStatus.textContent = "Ready";
+            analysisStatus.className = "status success";
+        }, 100);
+    }
+
+    function drawClusters() {
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth * window.devicePixelRatio;
+        canvas.height = container.clientHeight * window.devicePixelRatio;
+        canvas.style.width = container.clientWidth + 'px';
+        canvas.style.height = container.clientHeight + 'px';
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const points = state.pastWinners.map(draw => {
+            const sum = draw.reduce((a, b) => a + b, 0);
+            return { x: sum, y: sum / 6 };
+        });
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        points.forEach(p => {
+            if(p.x < minX) minX = p.x; if(p.x > maxX) maxX = p.x;
+            if(p.y < minY) minY = p.y; if(p.y > maxY) maxY = p.y;
+        });
+        const padding = 40;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        const scaleX = (width - padding*2) / (maxX - minX || 1);
+        const scaleY = (height - padding*2) / (maxY - minY || 1);
+        const mapX = (val) => padding + (val - minX) * scaleX;
+        const mapY = (val) => height - (padding + (val - minY) * scaleY);
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border');
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.5;
+        for (let i = 0; i <= 5; i++) {
+            const x = padding + (width - padding*2) * (i/5);
+            const y = padding + (height - padding*2) * (i/5);
+            ctx.beginPath();
+            ctx.moveTo(x, padding);
+            ctx.lineTo(x, height - padding);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(width - padding, y);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        points.forEach((p, i) => {
+            let minD = Infinity; let cIdx = 0;
+            state.clusters.forEach((c, ci) => {
+                const d = Math.hypot(p.x - c.centroid.x, p.y - c.centroid.y);
+                if (d < minD) { minD = d; cIdx = ci; }
+            });
+            ctx.fillStyle = state.clusters[cIdx].color;
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.arc(mapX(p.x), mapY(p.y), 4, 0, Math.PI*2);
+            ctx.fill();
+        });
+        state.clusters.forEach((c, i) => {
+            ctx.fillStyle = c.color;
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--text');
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(mapX(c.centroid.x), mapY(c.centroid.y), 8, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.strokeStyle = c.color;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.arc(mapX(c.centroid.x), mapY(c.centroid.y), Math.max(15, c.radius * scaleX), 0, Math.PI*2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        });
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-light');
+        ctx.font = '12px sans-serif';
+        ctx.fillText("Low Sum", padding, height - 10);
+        ctx.fillText("High Sum", width - padding - 50, height - 10);
+        ctx.save();
+        ctx.translate(15, height/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText("Low Avg", 0, 0);
+        ctx.restore();
+        ctx.save();
+        ctx.translate(15, padding + 20);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText("High Avg", 0, 0);
+        ctx.restore();
+    }
+
+    // Strategy handling
+    document.querySelectorAll('.strategy-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.strategy-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            state.strategy = e.target.dataset.strategy;
+            strategySelect.value = state.strategy;
+            showToast("Strategy: " + e.target.textContent, 'success');
+        });
+    });
+
+    strategySelect.addEventListener('change', (e) => {
+        state.strategy = e.target.value;
+        document.querySelectorAll('.strategy-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.strategy === state.strategy);
+        });
+        showToast("Strategy: " + e.target.options[e.target.selectedIndex].text, 'success');
+    });
+
+    generateBtn.addEventListener('click', () => {
+        if (state.pastWinners.length === 0) {
+            showToast("Please load data first", "error");
+            return;
+        }
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<span class="spinner"></span> Generating...';
+        setTimeout(() => {
+            const count = parseInt(numPicksInput.value) || 1;
+            if (resultsArea.children.length === 0 || resultsArea.querySelector('.empty-state')) {
+                resultsArea.innerHTML = '';
+            }
+            let generatedCount = 0;
+            let attempts = 0;
+            const maxAttempts = count * 500;
+            while (generatedCount < count && attempts < maxAttempts) {
+                const draw = generateAICombination();
+                const key = draw.join(',');
+                if (!state.pastWinnersSet.has(key) && !state.generated.has(key) && !state.bannedHistory.has(key)) {
+                    addResultToDOM(draw);
+                    state.generated.add(key);
+                    state.bannedHistory.add(key);
+                    generatedCount++;
+                }
+                attempts++;
+            }
+            saveBannedHistoryToStorage();
+            selectAllBtn.style.display = 'inline-flex';
+            if (generatedCount < count) {
+                showToast("Generated " + generatedCount + "/" + count + " combinations", "warning");
+            } else {
+                showToast("Generated " + generatedCount + " AI combinations", "success");
+            }
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '🚀 Generate AI Picks';
+        }, 100);
+    });
+
+    function generateAICombination() {
+        const targetCluster = state.clusters[Math.floor(Math.random() * 3)];
+        let attempts = 0;
+        while(attempts < 100) {
+            attempts++;
+            const numbers = pickWeightedNumbers();
+            const sum = numbers.reduce((a,b)=>a+b, 0);
+            const avg = sum / 6;
+            const distToCluster = Math.hypot(sum - targetCluster.centroid.x, avg - targetCluster.centroid.y);
+            const allowedVariance = Math.max(20, targetCluster.radius * 1.2);
+            if (distToCluster > allowedVariance) continue;
+            return numbers;
+        }
+        return pickWeightedNumbers();
+    }
+
+    function pickWeightedNumbers() {
+        const selection = new Set();
+        const pool = [];
+        const avgFreq = state.avgFrequency;
+        const repeatWinnerThreshold = avgFreq * 1.5;
+        for (let i = 1; i <= 59; i++) {
+            let weight = 10;
+            if (state.strategy === 'hot') {
+                if (state.frequencyMap[i] > avgFreq) weight += 5;
+                else weight -= 3;
+            } else if (state.strategy === 'cold') {
+                if (state.frequencyMap[i] < avgFreq * 0.5) weight += 5;
+                else if (state.frequencyMap[i] > avgFreq) weight -= 3;
+            } else if (state.strategy === 'balanced') {
+                if (state.frequencyMap[i] > avgFreq * 0.8 && state.frequencyMap[i] < avgFreq * 1.3) {
+                    weight += 3;
+                }
+            }
+            if (state.frequencyMap[i] > repeatWinnerThreshold) {
+                weight -= 8;
+            }
+            if (weight < 1) weight = 1;
+            if (weight > 20) weight = 20;
+            for(let w=0; w<weight; w++) pool.push(i);
+        }
+        while(selection.size < 6) {
+            const r = pool[Math.floor(Math.random() * pool.length)];
+            selection.add(r);
+        }
+        return Array.from(selection).sort((a,b)=>a-b);
+    }
+
+    function addResultToDOM(numbers) {
+        const sum = numbers.reduce((a,b)=>a+b, 0);
+        const avg = (sum/6).toFixed(1);
+        const key = numbers.join(',');
+        const card = document.createElement('div');
+        card.className = 'result-card';
+        card.dataset.key = key;
+        const ballsContainer = document.createElement('div');
+        ballsContainer.className = 'lotto-ball-group';
+        numbers.forEach(num => {
+            const ball = document.createElement('div');
+            ball.className = 'lotto-ball';
+            ball.textContent = num.toString().padStart(2, '0');
+            ballsContainer.appendChild(ball);
+        });
+        const meta = document.createElement('div');
+        meta.className = 'result-meta';
+        meta.innerHTML = '<span>Sum: ' + sum + '</span><span>Avg: ' + avg + '</span>';
+        const actions = document.createElement('div');
+        actions.className = 'result-actions';
+        actions.innerHTML = '<button onclick="copyNumbers(\'' + numbers.join(', ') + '\')">Copy</button><button onclick="removeCard(this)">Remove</button>';
+        card.appendChild(ballsContainer);
+        card.appendChild(meta);
+        card.appendChild(actions);
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.result-actions')) return;
+            card.classList.toggle('selected');
+            if (card.classList.contains('selected')) {
+                state.selected.add(key);
+            } else {
+                state.selected.delete(key);
+            }
+        });
+        resultsArea.appendChild(card);
+    }
+
+    window.copyNumbers = function(numbers) {
+        navigator.clipboard.writeText(numbers).then(() => {
+            showToast('Copied to clipboard!', 'success');
+        });
+    };
+
+    window.removeCard = function(btn) {
+        const card = btn.closest('.result-card');
+        const key = card.dataset.key;
+        state.generated.delete(key);
+        state.selected.delete(key);
+        card.remove();
+        if (resultsArea.children.length === 0) {
+            resultsArea.innerHTML = '<div class="empty-state"><div class="icon">🎱</div><h3>Ready to Generate</h3><p>Load historical data or paste recent numbers to begin AI analysis</p></div>';
+            selectAllBtn.style.display = 'none';
+        }
+    };
+
+    selectAllBtn.addEventListener('click', () => {
+        const cards = resultsArea.querySelectorAll('.result-card');
+        const allSelected = Array.from(cards).every(c => c.classList.contains('selected'));
+        cards.forEach(card => {
+            const key = card.dataset.key;
+            if (allSelected) {
+                card.classList.remove('selected');
+                state.selected.delete(key);
+            } else {
+                card.classList.add('selected');
+                state.selected.add(key);
+            }
+        });
+        showToast(allSelected ? 'Deselected all' : 'Selected all', 'success');
+    });
+
+    clearBtn.addEventListener('click', () => {
+        resultsArea.innerHTML = '<div class="empty-state"><div class="icon">🎱</div><h3>Cleared</h3><p>Ready for new combinations</p></div>';
+        state.generated.clear();
+        state.selected.clear();
+        selectAllBtn.style.display = 'none';
+    });
+
+    clearDataBtn.addEventListener('click', () => {
+        if (confirm('Clear all historical data? This cannot be undone.')) {
+            state.pastWinners = [];
+            state.pastWinnersSet.clear();
+            state.frequencyMap.fill(0);
+            state.hasNewData = false;
+            localStorage.removeItem('lottoData');
+            statLoaded.textContent = '0';
+            statUpdated.textContent = 'No';
+            statHotNumber.textContent = '-';
+            statAvgSum.textContent = '-';
+            downloadBtn.style.display = 'none';
+            topNumbersCard.style.display = 'none';
+            frequencySection.style.display = 'none';
+            fileStatus.innerHTML = '<span class="status">No data loaded</span>';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            showToast('All data cleared', 'success');
+        }
+    });
+
+    // --- Print Functionality ---
+    printBtn.addEventListener('click', function() {
+        const resultsCards = document.querySelectorAll('.result-card');
+        if (resultsCards.length === 0) {
+            showToast("Generate picks first!", "error");
+            return;
+        }
+        try {
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert("Please allow popups to print");
+                return;
+            }
+            const dateStr = new Date().toLocaleString();
+            let picksHTML = '';
+            resultsCards.forEach(card => {
+                const balls = card.querySelectorAll('.lotto-ball');
+                let nums = [];
+                balls.forEach(b => nums.push(b.innerText));
+                picksHTML += '<div style="display: inline-block; margin: 10px; border: 2px solid #2563eb; padding: 15px; border-radius: 12px; width: 140px; text-align: center; background: #f8fafc;"><div style="font-size: 28px; font-weight: bold; color: #2563eb; margin-bottom: 5px; letter-spacing: 2px;">' + nums.join(' ') + '</div></div>';
+            });
+            const printDoc = '<!DOCTYPE html><html><head><title>NY Lotto Picks</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px;text-align:center;background:white;}h1{color:#1e40af;font-size:32px;margin-bottom:10px;}.subtitle{color:#64748b;font-size:16px;margin-bottom:10px;}.date{color:#94a3b8;margin-bottom:40px;font-size:14px;}.container{margin-top:30px;display:flex;flex-wrap:wrap;justify-content:center;gap:15px;}.footer{margin-top:50px;color:#94a3b8;font-size:12px;border-top:1px solid #e2e8f0;padding-top:20px;}@media print{body{padding:20px;}button{display:none;}}</style></head><body><h1>🎱 NY Lotto AI</h1><p class="subtitle">AI-Optimized Number Selections</p><p class="date">Generated: ' + dateStr + '</p><div class="container">' + picksHTML + '</div><div class="footer">Generated by Lotto AI - Not affiliated with NY Lottery - Play responsibly</div><br><br><button onclick="window.print()" style="padding:12px 24px;cursor:pointer;background:#2563eb;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;">🖨️ Print Now</button></body></html>';
+            printWindow.document.open();
+            printWindow.document.write(printDoc);
+            printWindow.document.close();
+            setTimeout(() => {
+                printWindow.focus();
+                printWindow.print();
+            }, 500);
+            showToast("Print preview opened", "success");
+        } catch (e) {
+            console.error("Print error:", e);
+            showToast("Could not open print window", "error");
+        }
+    });
+
+    // --- Save Picks as CSV ---
+    savePicksBtn.addEventListener('click', function() {
+        if (state.generated.size === 0) {
+            showToast("Please generate picks first!", "error");
+            return;
+        }
+        const picksArray = Array.from(state.generated);
+        const csvContent = "data:text/csv;charset=utf-8,Numbers,Sum,Average\n" +
+            picksArray.map(pick => {
+                const nums = pick.split(',').map(Number);
+                const sum = nums.reduce((a,b) => a+b, 0);
+                const avg = (sum/6).toFixed(1);
+                return pick + ',' + sum + ',' + avg;
+            }).join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "lotto_picks_" + new Date().toISOString().split('T')[0] + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Picks saved to CSV!", "success");
+    });
+
+    // --- Share Functionality ---
+    shareBtn.addEventListener('click', async () => {
+        if (state.generated.size === 0) {
+            showToast("Generate picks first!", "error");
+            return;
+        }
+        const picksText = Array.from(state.generated).join('\n');
+        const shareData = {
+            title: 'My NY Lotto AI Picks',
+            text: 'Here are my AI-generated lottery numbers:\n' + picksText + '\nGenerated by Lotto AI',
+        };
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+                showToast('Shared successfully!', 'success');
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    navigator.clipboard.writeText(shareData.text);
+                    showToast('Copied to clipboard!', 'success');
+                }
+            }
+        } else {
+            navigator.clipboard.writeText(shareData.text);
+            showToast('Copied to clipboard!', 'success');
+        }
+    });
+
+    // --- Toast Notification ---
+    function showToast(message, type) {
+        type = type || 'success';
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        const icons = { success: '✅', error: '❌', warning: '⚠️' };
+        toast.innerHTML = '<span style="font-size: 1.2rem;">' + (icons[type] || '•') + '</span> ' + message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // --- Pull to Refresh (Mobile) ---
+    let touchStartY = 0;
+    let touchEndY = 0;
+    const ptrIndicator = document.getElementById('ptrIndicator');
+    document.addEventListener('touchstart', e => {
+        if (window.scrollY === 0) touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+        if (window.scrollY === 0 && touchStartY > 0) {
+            touchEndY = e.touches[0].clientY;
+            const diff = touchEndY - touchStartY;
+            if (diff > 100 && diff < 200) ptrIndicator.classList.add('show');
+        }
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+        if (ptrIndicator.classList.contains('show')) {
+            setTimeout(() => {
+                ptrIndicator.classList.remove('show');
+                if (state.pastWinners.length > 0) {
+                    recalculateStats();
+                    runKMeans();
+                    showToast('Data refreshed', 'success');
+                }
+            }, 1000);
+        }
+        touchStartY = 0;
+    });
+
+    // --- Resize Handler ---
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if(state.pastWinners.length > 0) drawClusters();
+        }, 250);
+    });
+
+    // --- Keyboard Shortcuts ---
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generateBtn.click();
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            if (state.generated.size > 0) savePicksBtn.click();
+        }
+    });
+
+    // --- Visibility API ---
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) saveToLocalStorage();
+    });
+
+    // Initialize
+    updateBannedCountUI();
+    </script>
+</body>
+</html>
